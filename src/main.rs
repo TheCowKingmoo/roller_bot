@@ -7,7 +7,9 @@ use serenity::framework::standard::{
 
 use crate::commands::*;
 
+
 pub mod commands;
+pub mod core;
 
 use std::env;
 
@@ -22,7 +24,9 @@ fn main() {
         .expect("Error creating client");
     client.with_framework(StandardFramework::new()
         .configure(|c| c.prefix("~")) // set the bot's prefix to "~"
-        .group(&general::GENERAL_GROUP));
+        .group(&general::GENERAL_GROUP)
+        .group(&roll::DICE_ROLL_GROUP)
+    );
 
     // start listening for events by starting a single shard
     if let Err(why) = client.start() {
