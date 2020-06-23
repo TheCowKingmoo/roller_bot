@@ -11,6 +11,7 @@ use crate::commands::*;
 pub mod commands;
 pub mod core;
 
+use futures::executor::block_on;
 use std::env;
 
 
@@ -18,9 +19,13 @@ impl EventHandler for Handler {}
 
 struct Handler;
 
-fn main() {
-    // Login with a bot token from the environment
-    let mut client = Client::new(&env::var("DISCORD_TOKEN").expect("token"), Handler)
+async fn async_main()  {
+    let c = construct().await;
+}
+
+async fn construct()  {
+        // Login with a bot token from the environment
+        let mut client = Client::new(&env::var("DISCORD_TOKEN").expect("token"), Handler)
         .expect("Error creating client");
     client.with_framework(StandardFramework::new()
         .configure(|c| c.prefix("~")) // set the bot's prefix to "~"
@@ -32,4 +37,11 @@ fn main() {
     if let Err(why) = client.start() {
         println!("An error occurred while running the client: {:?}", why);
     }
+}
+
+
+
+
+fn main() {
+    block_on(async_main());
 }

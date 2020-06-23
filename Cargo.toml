@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 rand = "*"
+futures = "*"
 
 [dependencies.serenity]
 git = "https://github.com/serenity-rs/serenity"

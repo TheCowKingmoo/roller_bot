@@ -12,6 +12,8 @@ use serenity::framework::standard::{
 use crate::core::*;
 
 
+const MAX_PRINT_LINE_NUM: u32 = 128;
+
 #[group]
 #[commands(roll)]
 pub struct Dice_Roll;
@@ -39,13 +41,15 @@ fn roll(ctx: &mut Context, msg: &Message) -> CommandResult {
             }
         }
 
-        if a_flag == true  {
+        if a_flag == true || num_roll > MAX_PRINT_LINE_NUM  {
             print_string = roller::avg_roller(num_roll, dice_type, add_on);
         }  else  {
           print_string = roller::print_all_rolls(num_roll, dice_type, add_on);
         }
         
     }
+
+    println!("{}", print_string);
 	
     msg.reply(ctx, print_string);
 	
