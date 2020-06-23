@@ -13,6 +13,7 @@ use crate::core::*;
 
 
 const MAX_PRINT_LINE_NUM: u32 = 128;
+const MAX_PRINT_LINE_MSG: &str = "Result exceeded max print number. Averaging result instead.\n";
 
 #[group]
 #[commands(roll)]
@@ -41,9 +42,11 @@ fn roll(ctx: &mut Context, msg: &Message) -> CommandResult {
             }
         }
 
-        if a_flag == true || num_roll > MAX_PRINT_LINE_NUM  {
+        if a_flag == true {
             print_string = roller::avg_roller(num_roll, dice_type, add_on);
-        }  else  {
+        }  else if num_roll > MAX_PRINT_LINE_NUM   {
+            print_string =  format!("{}{}", MAX_PRINT_LINE_MSG.to_string(), roller::avg_roller(num_roll, dice_type, add_on));
+        } else  {
           print_string = roller::print_all_rolls(num_roll, dice_type, add_on);
         }
         

@@ -69,6 +69,7 @@ pub fn avg_roller(number_of_rolls: u32, dice_type: u32, add_on: i32) -> String  
     }
     result_string.push_str(TOTAL_RESULT);
     result_string.push_str(&(total.to_string()));
+    result_string.push_str(NEWLINE);
     result_string.push_str(AVERAGE_RESULT);
     result_string.push_str(&((total / i as i32).to_string()));
     result_string.push_str(NEWLINE);
