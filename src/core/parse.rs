@@ -5,44 +5,51 @@ const ADD_CHAR: char = '+';
 const ARG_AVERAGE_CHAR: char = 'a';
 const DICE_CHAR_LOWER: char = 'd';
 const DICE_CHAR_UPPER: char = 'D';
-const EMPTY_STRING: &str = "";
-const E_TOO_SMALL_INPUT: &str = "input is too small";
-const E_MORE_THAN_ONE_ARG_CHAR: &str = "more than one arg character was detected";
-const E_NON_INT_BEFORE_D: &str = "got a non-integer before D";
-const E_NON_INT_AFTER_D: &str = "got non-integer after D";
-const E_MINUS_IN_WRONG_SPOT: &str = "detected minus in wrong location";
-const E_SIGN_NO_ROOM: &str = "detected operation but nothing behind it";
-const E_MORE_THAN_ONE_ATTEMPT_TO_ADD_MINUS: &str = "detected more than one attempt to add and or minus";
-const E_DEFAULT: &str = "default error catcher";
-const E_ADD_SUB_NON_DIGIT: &str = "error - attempting to add/sub a non digit";
 
-const E_MULTIPLE_SAME_ARG: &str = "Error - more than one of the same arg detected";
-const E_NO_MATCH_ARG: &str = "Error - no matching arguments";
-const ASCII_FIX: u32 = 48;
+const ASCII_DECIMAL_SHIFT: u32 = 48;
+const ASCII_ALPHA_SHIFT_IDX:u32 = 97;
 
 
-pub fn parse_roll_message(message_string: String) -> (u32, u32, i32, Vec<char>, String)  {
+#[derive(Debug)]
+pub enum ParseError  {
+  NoDecimalBeforeD,
+  NonDecimalBeforeD,
+  NonDecimalAfterD,
+  NonDigit,
+  SameArg,
+  NoMatchArg,
+  InputTooSmall,
+  SplitStringTooSmall,
+  FirstCharAlphabet,
+  AlreadyRolledDice,
+  CatchAll
+}
+pub type DiceParseResult = Result<(u32, u32), ParseError>;
 
-    let mut arg_char_vector = Vec::new();             // Char Vector that will hold arg flags 
-    let mut arg_str_return: String = String::new();   // String that will be filled with error message if error happens
+pub type ModifyParseResult = Result<i32, ParseError>;
+
+pub type ArgParseResult = Result<Vec<char>, ParseError>;
+
+pub type ParseResult = Result<(u32, u32, i32, Vec<char>), ParseError>;
+
+
+pub fn parse_roll_message(message_string: String) -> ParseResult  {
+
+    let mut arg_char_vector:Vec<char> = vec!['.'; 26];            // Char Vector that will hold arg flags 
 
     //Check if the given string is too small to actually be a command
     if message_string.len() < 9  {                    // value = min length for prefix + roll + whitespace + 1D1 - usize made making this a const a pain
                                                       // eg: ~roll 1D1 = smallest command possible
-      arg_str_return.push_str(E_TOO_SMALL_INPUT);     
-      return (0, 0, 0, arg_char_vector, arg_str_return);
+      return Err(ParseError::InputTooSmall);
     }
 
-    let mut number_of_dice = Vec::new();              // will have the input string characters representing number of dice
-    let mut dice_type = Vec::new();                   // will have the input string characters representing dice type
+    let mut number_of_dice: u32 = 0;              // will have the input string characters representing number of dice
+    let mut dice_type: u32 = 0;                   // will have the input string characters representing dice type
     let mut extra: i32 = 0;
     
 
     //Flags used to tell if we have already parsed parts already
-    let mut dice_num_flag = false;
-    let mut d_char_flag = false;
-    let mut operator_flag = false;
-    let mut add_minus_flag = false;
+    let mut dice_flag = false;
 
     // splits the input string by whitespace
     let split = message_string.split_whitespace();
@@ -59,156 +66,130 @@ pub fn parse_roll_message(message_string: String) -> (u32, u32, i32, Vec<char>, 
 
       // now we break down the string into characters
       let characters: Vec<char> = chunk_string.chars().collect();
-      for j in 0..characters.len()  {
-        let character: char = characters[j];
 
-        // Check for args / minus
-        if character == ARG_CHAR  {
-          // cannot have - in any location but the first
-          if j != 0  {
-            arg_str_return.push_str(E_MINUS_IN_WRONG_SPOT);
-            return(0, 0, 0, arg_char_vector, arg_str_return);
-          }
-          // check if anything exists past
-          if j >= characters.len()+1  {
-            arg_str_return.push_str(E_SIGN_NO_ROOM);
-            return(0, 0, 0, arg_char_vector, arg_str_return);
-            // check next char - if digit then we know this is a minus
-          }  else if  characters[j+1].is_ascii_digit()  {
-            // we have already tried to minus
-            if add_minus_flag == true  {
-              arg_str_return.push_str(E_MORE_THAN_ONE_ATTEMPT_TO_ADD_MINUS);
-              return (0, 0, 0, arg_char_vector, arg_str_return);
-            }
-            add_minus_flag = true;
-            let sub_tuple = add_or_subtract(chunk_string);
-            
-            extra = sub_tuple.0 as i32;
-            extra = extra * -1;
+      if characters.len() < 2  {
+        println!("SplitStringTooSmall");
+        return Err(ParseError::SplitStringTooSmall);
+      }
 
-            arg_str_return = sub_tuple.1;
+      let current_char = characters[0];
+      let next_char = characters[1];
 
-            if arg_str_return != EMPTY_STRING  {
-              return (0, 0, 0, arg_char_vector, arg_str_return);
-            }
+      if current_char.is_alphabetic()  {
+        println!("FirstCharAlphabet");
+        return Err(ParseError::FirstCharAlphabet);
+      }
 
-            break; //we break as the add_or_sub function parse that whole string
-
-          }  else if operator_flag == true  {
-            arg_str_return.push_str(E_MORE_THAN_ONE_ARG_CHAR);
-            return (0, 0, 0, arg_char_vector, arg_str_return);
-          }  else  {
-            operator_flag = true;
-            let arg_return_tuple = break_up_arg(chunk_string);
-            arg_char_vector = arg_return_tuple.0;
-            arg_str_return = arg_return_tuple.1;
-            if arg_str_return != EMPTY_STRING  {
-              return (0, 0, 0, arg_char_vector, arg_str_return);
-            }
-            break;
-          }
-
-        }  else if character == ADD_CHAR   {
-
-          if j >= characters.len()+1  {
-            arg_str_return.push_str(E_SIGN_NO_ROOM);
-            return(0, 0, 0, arg_char_vector, arg_str_return);
-            // check next char - if digit then we know this is a minus
-          }
-
-          if add_minus_flag == true   {
-            arg_str_return.push_str(E_MORE_THAN_ONE_ATTEMPT_TO_ADD_MINUS);
-            return (0, 0, 0, arg_char_vector, arg_str_return);
-          }
-          
-          add_minus_flag = true;
-          let sub_tuple = add_or_subtract(chunk_string);
-          
-          extra = sub_tuple.0 as i32;
-
-          arg_str_return = sub_tuple.1;
-
-          if arg_str_return != EMPTY_STRING  {
-            return (0, 0, 0, arg_char_vector, arg_str_return);
-          }
-
-          break; //we break as the add_or_sub function parse that whole string
-
-        } else if character.is_alphabetic()  {
-
-          if number_of_dice.len() < 1  {
-            arg_str_return.push_str(E_NON_INT_BEFORE_D);
-            return (0, 0, 0, arg_char_vector, arg_str_return);
-          }
-
-          if dice_type.len() > 1  {
-            arg_str_return.push_str(E_NON_INT_AFTER_D);
-            return (0, 0, 0, arg_char_vector, arg_str_return);
-          }
-
-          //check if this is our single D character
-          if d_char_flag == false && (character == DICE_CHAR_LOWER || character == DICE_CHAR_UPPER) {
-            d_char_flag = true;
-            dice_num_flag = true;
-          } 
-
-        } else if character.is_ascii_digit()  {
-
-          if dice_num_flag == false {
-
-            number_of_dice.push(u32::from(character) - ASCII_FIX);
-
-          //this is the second set of numbers so we add to dice_type
-          }  else  {
-            
-              dice_type.push(u32::from(character) - ASCII_FIX);
-          }
+      if current_char.is_ascii_digit()  {
+        if dice_flag == false  {
+          dice_flag = true;
+          let r_tuple = parse_dice(chunk_string)?;
+          number_of_dice = r_tuple.0;
+          dice_type = r_tuple.1;
         }  else  {
-          arg_str_return.push_str(E_DEFAULT);
-          return (0, 0, 0, arg_char_vector, arg_str_return);
+          println!("AlreadyRolledDice");
+          return Err(ParseError::AlreadyRolledDice);
         }
-      }  //end for inner loop  
-    }  //end outer for loop
-    return (convert_vector_of_u32_to_single_u32(number_of_dice.as_mut_slice()), convert_vector_of_u32_to_single_u32(dice_type.as_mut_slice()), extra, arg_char_vector, arg_str_return);
-}  //end parse roll
+      }  else if current_char == ARG_CHAR  {
+        if next_char.is_ascii_digit()  {
+          extra += modify_operation(chunk_string)?;
+        }  else  {
 
-fn break_up_arg(arg_string: &str) -> (Vec<char>, String)  {
-  let mut i = 0;
+          let temp_vec = break_up_arg(chunk_string)?;
+          for character in temp_vec  {
+            let s: usize = (character as u32 - ASCII_ALPHA_SHIFT_IDX) as usize;
+            arg_char_vector[s] = character;
+          }
+
+        }
+        
+      }  else if current_char == ADD_CHAR  {
+        extra += modify_operation(chunk_string)?;
+      }  else  {
+        println!("CatchAll");
+        return Err(ParseError::CatchAll);
+      }
+    }
+    println!("{}, {}, {}", number_of_dice, dice_type, extra);
+    Ok( (number_of_dice, dice_type, extra, arg_char_vector) )
+  }
+
+// will parse a string in a format like 1D20, 100D100, num...numDnum...num
+// the numbers before D are used as number of dice to roll, after D represents the type of dice
+fn parse_dice(dice_string: &str) -> DiceParseResult {
+
+  let mut number_of_dice_vec = Vec::new(); 
+  let mut dice_type_vec = Vec::new();
+  let mut d_flag = false;  //lets us know what half od the string we are on
+
+  // split string into a vec of chars
+  let characters: Vec<char> = dice_string.chars().collect();
+  
+  for character in characters  {
+    if d_flag == false  {
+      if character.is_ascii_digit()  {
+        // push the found char in its u32 decimal form
+        number_of_dice_vec.push(u32::from(character) - ASCII_DECIMAL_SHIFT);
+      }  else if  character == DICE_CHAR_LOWER || character == DICE_CHAR_UPPER  {
+        if number_of_dice_vec.len() < 1  {
+          println!("NoDecimalBeforeD");
+          return Err(ParseError::NoDecimalBeforeD);
+        }
+        d_flag = true;
+      }  else  {
+        //got a non number before D
+        println!("NonDecimalBeforeD");
+        return Err(ParseError::NonDecimalBeforeD);
+      }
+
+    }  else  {
+      if character.is_ascii_digit()  {
+        // push the found char in its u32 decimal form
+        dice_type_vec.push(u32::from(character) - ASCII_DECIMAL_SHIFT);
+      }  else  {
+        println!("NonDecimalAfterD");
+        return Err(ParseError::NonDecimalAfterD);
+      }
+    }
+  }
+
+  // convert collected numbers into a singular u32
+  let number_of_dice: u32 = convert_vector_of_u32_to_single_u32(number_of_dice_vec.as_mut_slice());
+  let dice_type: u32 = convert_vector_of_u32_to_single_u32(dice_type_vec.as_mut_slice());
+  let return_tuple = (number_of_dice, dice_type);
+  Ok(return_tuple)
+}
+
+fn break_up_arg(arg_string: &str) -> ArgParseResult  {
+
   let mut return_vector = Vec::new();
   let mut a_flag = false;
-  let mut return_str = EMPTY_STRING;
-  let mut return_string = String::new();
 
+  let mut i = 0;
   for character in arg_string.chars()  {
     if i == 0  {
       i += 1;
       continue;
     }
-
     let lower_character = character.to_ascii_lowercase();
-
-    match lower_character  {
-      // a = avg
-      ARG_AVERAGE_CHAR => if a_flag == false  {
+    if lower_character == ARG_AVERAGE_CHAR  {
+      if a_flag == false  {
         a_flag = true;
         return_vector.push(character);
       }  else  {
-        return_str = E_MULTIPLE_SAME_ARG;
-        break;
-      },
-      // default catch all
-      _ => return_str = E_NO_MATCH_ARG
+        println!("SameArg");
+        return Err(ParseError::SameArg);
+      }
+    }  else  {
+      println!("NoMatchArg");
+      return Err(ParseError::NoMatchArg);
     }
-    
     i+=1;
   }
-  return_string.push_str(return_str);
-  return (return_vector, return_string);
+  Ok(return_vector)
 }
 
-
-fn add_or_subtract(input_string: &str) -> (u32, String)  {
-  let mut return_string = String::new();
+fn modify_operation(input_string: &str) -> ModifyParseResult  {
   let mut numbers = Vec::new();
   let mut i = 0;
   for character in input_string.chars()  {
@@ -217,14 +198,14 @@ fn add_or_subtract(input_string: &str) -> (u32, String)  {
       continue;
     }
     if character.is_ascii_digit() == false  {
-      return_string.push_str(E_ADD_SUB_NON_DIGIT);
-      return (0,return_string);
+      println!("NonDigit");
+      return Err(ParseError::NonDigit);
     }
-    numbers.push(u32::from(character) - ASCII_FIX);
+    numbers.push(u32::from(character) - ASCII_DECIMAL_SHIFT);
   }
 
-  let number = convert_vector_of_u32_to_single_u32(numbers.as_mut_slice());
-  return (number, return_string);
+  let number = convert_vector_of_u32_to_single_u32(numbers.as_mut_slice()) as i32;
+  Ok(number)
 }
 
 

@@ -17,7 +17,7 @@ const MAX_PRINT_LINE_MSG: &str = "Result exceeded max print number. Averaging re
 
 #[group]
 #[commands(roll)]
-pub struct Dice_Roll;
+pub struct DiceRoll;
 
 #[command]
 fn roll(ctx: &mut Context, msg: &Message) -> CommandResult {
@@ -25,36 +25,47 @@ fn roll(ctx: &mut Context, msg: &Message) -> CommandResult {
 	let mut print_string: String = String::new();
 	let mut a_flag = false;
 
-    let tuple_return = parse::parse_roll_message(message_string);
+    //let mut tuple_return: (u32, u32, i32, Vec<char>) = (0, 0, 0, Vec::new());
 
-    let num_roll = tuple_return.0;
-    let dice_type = tuple_return.1;
-    let add_on = tuple_return.2;
-    let args = tuple_return.3;
-    let err_string = tuple_return.4;
+    print_string.push_str("");
 
-    if err_string != ""  {
-        print_string = err_string;
+    let r = parse::parse_roll_message(message_string);
+    if r.is_err()  {
+        print_string = format!("{:?}", r.err().unwrap());
     }  else  {
+        let tuple_return = r.ok().unwrap();
+        
+        let num_roll = tuple_return.0;
+        let dice_type = tuple_return.1;
+        let add_on = tuple_return.2;
+        let args = tuple_return.3;
+
+
+        println!("{}", num_roll);
+    
         for character in args  {
             if character == 'a'  {
                 a_flag = true;
             }
         }
-
+    
         if a_flag == true {
             print_string = roller::avg_roller(num_roll, dice_type, add_on);
         }  else if num_roll > MAX_PRINT_LINE_NUM   {
             print_string =  format!("{}{}", MAX_PRINT_LINE_MSG.to_string(), roller::avg_roller(num_roll, dice_type, add_on));
         } else  {
-          print_string = roller::print_all_rolls(num_roll, dice_type, add_on);
-        }
-        
+            print_string = roller::print_all_rolls(num_roll, dice_type, add_on);
+        }    
+
+
     }
+
+
+    
 
     println!("{}", print_string);
 	
-    msg.reply(ctx, print_string);
+    msg.reply(ctx, print_string)?;
 	
     Ok(())
 }

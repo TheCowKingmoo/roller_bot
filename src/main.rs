@@ -20,7 +20,7 @@ impl EventHandler for Handler {}
 struct Handler;
 
 async fn async_main()  {
-    let c = construct().await;
+    let _c = construct().await;
 }
 
 async fn construct()  {
@@ -30,7 +30,7 @@ async fn construct()  {
     client.with_framework(StandardFramework::new()
         .configure(|c| c.prefix("~")) // set the bot's prefix to "~"
         .group(&general::GENERAL_GROUP)
-        .group(&roll::DICE_ROLL_GROUP)
+        .group(&roll::DICEROLL_GROUP)
     );
 
     // start listening for events by starting a single shard
