@@ -19,6 +19,8 @@ pub enum ParseError {
   SplitStringTooSmall,
   FirstCharAlphabet,
   AlreadyRolledDice,
+  NoDFound,
+  NoDecimalAfterD,
   CatchAll,
 }
 pub type DiceParseResult = Result<(u32, u32), ParseError>;
@@ -86,7 +88,7 @@ pub fn parse_roll_message(message_string: String) -> ParseResult {
       }
     } else if current_char == ARG_CHAR {
       if next_char.is_ascii_digit() {
-        extra -= modify_operation(chunk_string)?;
+        extra += modify_operation(chunk_string)?;
       } else {
         let temp_vec = break_up_arg(chunk_string)?;
         for character in temp_vec {
@@ -111,8 +113,7 @@ fn parse_dice(dice_string: &str) -> DiceParseResult {
   let mut number_of_dice_vec = Vec::new();
   let mut dice_type_vec = Vec::new();
   let mut d_flag = false; //lets us know what half od the string we are on
-
-  // split string into a vec of chars
+                          // split string into a vec of chars
   let characters: Vec<char> = dice_string.chars().collect();
 
   for character in characters {
@@ -138,6 +139,14 @@ fn parse_dice(dice_string: &str) -> DiceParseResult {
       println!("NonDecimalAfterD");
       return Err(ParseError::NonDecimalAfterD);
     }
+  }
+
+  if !d_flag {
+    return Err(ParseError::NoDFound);
+  }
+
+  if dice_type_vec.is_empty() {
+    return Err(ParseError::NoDecimalAfterD);
   }
 
   // convert collected numbers into a singular u32
@@ -177,20 +186,23 @@ fn break_up_arg(arg_string: &str) -> ArgParseResult {
 
 fn modify_operation(input_string: &str) -> ModifyParseResult {
   let mut numbers = Vec::new();
+  let mut sign: i32 = 1;
   let mut i = 0;
   for character in input_string.chars() {
     if i == 0 {
+      if character == ARG_CHAR {
+        sign = -1;
+      }
       i += 1;
       continue;
-    }
-    if !character.is_ascii_digit() {
+    } else if !character.is_ascii_digit() {
       println!("NonDigit");
       return Err(ParseError::NonDigit);
     }
     numbers.push(u32::from(character) - ASCII_DECIMAL_SHIFT);
   }
 
-  let number = convert_vector_of_u32_to_single_u32(numbers.as_mut_slice()) as i32;
+  let number = sign * convert_vector_of_u32_to_single_u32(numbers.as_mut_slice()) as i32;
   Ok(number)
 }
 
@@ -205,4 +217,148 @@ fn convert_vector_of_u32_to_single_u32(input_vector: &mut [u32]) -> u32 {
     i += 1;
   }
   final_number
+}
+
+#[test]
+fn test_vector_of_u32_to_single_u32() {
+  let mut input = Vec::new();
+  input.push(1);
+  input.push(0);
+  input.push(0);
+  input.push(1);
+  let actual = 1001;
+  let return_value = convert_vector_of_u32_to_single_u32(input.as_mut_slice());
+  assert_eq!(actual, return_value);
+}
+
+#[test]
+fn test_arg_average() {
+  let input = "-a";
+  let expected = vec!['a'];
+  let return_value = break_up_arg(input);
+  assert_eq!(expected, return_value.ok().unwrap());
+}
+
+#[test]
+fn test_arg_dne() {
+  let input = "-.";
+  let expected = ParseError::NoMatchArg;
+  let return_value = break_up_arg(input);
+  assert_eq!(
+    format!("{:?}", expected),
+    format!("{:?}", return_value.err().unwrap())
+  );
+}
+
+#[test]
+fn test_mod_add() {
+  let input = "+100";
+  let expected: i32 = 100;
+  let return_value = modify_operation(input);
+  assert_eq!(expected, return_value.ok().unwrap());
+}
+
+#[test]
+fn test_mod_sub() {
+  let input = "-100";
+  let expected: i32 = -100;
+  let return_value = modify_operation(input);
+  assert_eq!(expected, return_value.ok().unwrap());
+}
+
+#[test]
+fn test_mod_non_digit() {
+  let input = "+1a1";
+  let expected = ParseError::NonDigit;
+  let return_value = modify_operation(input);
+  assert_eq!(
+    format!("{:?}", expected),
+    format!("{:?}", return_value.err().unwrap())
+  );
+}
+
+#[test]
+fn test_simple_parse_dice() {
+  let input = "1D20";
+  let expected: (u32, u32) = (1, 20);
+  let return_value = parse_dice(input);
+  assert_eq!(expected, return_value.ok().unwrap());
+}
+
+#[test]
+fn test_multi_parse_dice() {
+  let input = "70D100";
+  let expected: (u32, u32) = (70, 100);
+  let return_value = parse_dice(input);
+  assert_eq!(expected, return_value.ok().unwrap());
+}
+
+#[test]
+fn test_parse_dice_no_d() {
+  let input = "100";
+  let expected = ParseError::NoDFound;
+  let return_value = parse_dice(input);
+  assert_eq!(
+    format!("{:?}", expected),
+    format!("{:?}", return_value.err().unwrap())
+  );
+}
+
+#[test]
+fn test_parse_dice_no_digit_before_d() {
+  let input = "D100";
+  let expected = ParseError::NoDecimalBeforeD;
+  let return_value = parse_dice(input);
+  assert_eq!(
+    format!("{:?}", expected),
+    format!("{:?}", return_value.err().unwrap())
+  );
+}
+
+#[test]
+fn test_parse_dice_no_digit_after_d() {
+  let input = "100D";
+  let expected = ParseError::NoDecimalAfterD;
+  let return_value = parse_dice(input);
+  assert_eq!(
+    format!("{:?}", expected),
+    format!("{:?}", return_value.err().unwrap())
+  );
+}
+
+#[test]
+fn test_parse_roll_message_too_small() {
+  let input = "~roll 1D".to_owned();
+  let expected = ParseError::InputTooSmall;
+  let return_value = parse_roll_message(input);
+  assert_eq!(
+    format!("{:?}", expected),
+    format!("{:?}", return_value.err().unwrap())
+  );
+}
+
+#[test]
+fn test_parse_roll_message_simple() {
+  let input = "~roll 1D20".to_owned();
+  let expected: (u32, u32, i32, Vec<char>) = (1, 20, 0, vec!['.'; 26]);
+  let return_value = parse_roll_message(input);
+  assert_eq!(expected, return_value.ok().unwrap());
+}
+
+#[test]
+fn test_parse_roll_message_modify() {
+  let input = "~roll 1D20 +7 -100".to_owned();
+  let expected: (u32, u32, i32, Vec<char>) = (1, 20, -93, vec!['.'; 26]);
+  let return_value = parse_roll_message(input);
+  assert_eq!(expected, return_value.ok().unwrap());
+}
+
+#[test]
+fn test_parse_roll_message_arg() {
+  let input = "~roll 1D20 -a".to_owned();
+  let mut vec = vec!['.'; 26];
+  vec[0] = 'a';
+  let expected: (u32, u32, i32, Vec<char>) = (1, 20, 0, vec);
+  let return_value = parse_roll_message(input);
+  assert_eq!(expected, return_value.ok().unwrap());
 }
