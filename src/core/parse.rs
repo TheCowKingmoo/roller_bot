@@ -86,7 +86,7 @@ pub fn parse_roll_message(message_string: String) -> ParseResult {
       }
     } else if current_char == ARG_CHAR {
       if next_char.is_ascii_digit() {
-        extra += modify_operation(chunk_string)?;
+        extra -= modify_operation(chunk_string)?;
       } else {
         let temp_vec = break_up_arg(chunk_string)?;
         for character in temp_vec {
