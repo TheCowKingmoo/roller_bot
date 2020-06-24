@@ -81,7 +81,7 @@ pub fn parse_roll_message(message_string: String) -> ParseResult  {
       }
 
       if current_char.is_ascii_digit()  {
-        if dice_flag == false  {
+        if !dice_flag {
           dice_flag = true;
           let r_tuple = parse_dice(chunk_string)?;
           number_of_dice = r_tuple.0;
@@ -126,12 +126,12 @@ fn parse_dice(dice_string: &str) -> DiceParseResult {
   let characters: Vec<char> = dice_string.chars().collect();
   
   for character in characters  {
-    if d_flag == false  {
+    if !d_flag  {
       if character.is_ascii_digit()  {
         // push the found char in its u32 decimal form
         number_of_dice_vec.push(u32::from(character) - ASCII_DECIMAL_SHIFT);
       }  else if  character == DICE_CHAR_LOWER || character == DICE_CHAR_UPPER  {
-        if number_of_dice_vec.len() < 1  {
+        if number_of_dice_vec.is_empty()  {
           println!("NoDecimalBeforeD");
           return Err(ParseError::NoDecimalBeforeD);
         }
@@ -142,15 +142,14 @@ fn parse_dice(dice_string: &str) -> DiceParseResult {
         return Err(ParseError::NonDecimalBeforeD);
       }
 
+    }  else if character.is_ascii_digit()  {
+      // push the found char in its u32 decimal form
+      dice_type_vec.push(u32::from(character) - ASCII_DECIMAL_SHIFT);
     }  else  {
-      if character.is_ascii_digit()  {
-        // push the found char in its u32 decimal form
-        dice_type_vec.push(u32::from(character) - ASCII_DECIMAL_SHIFT);
-      }  else  {
-        println!("NonDecimalAfterD");
-        return Err(ParseError::NonDecimalAfterD);
-      }
+      println!("NonDecimalAfterD");
+      return Err(ParseError::NonDecimalAfterD);
     }
+    
   }
 
   // convert collected numbers into a singular u32
@@ -173,7 +172,7 @@ fn break_up_arg(arg_string: &str) -> ArgParseResult  {
     }
     let lower_character = character.to_ascii_lowercase();
     if lower_character == ARG_AVERAGE_CHAR  {
-      if a_flag == false  {
+      if !a_flag {
         a_flag = true;
         return_vector.push(character);
       }  else  {
@@ -197,7 +196,7 @@ fn modify_operation(input_string: &str) -> ModifyParseResult  {
       i+=1;
       continue;
     }
-    if character.is_ascii_digit() == false  {
+    if !character.is_ascii_digit()  {
       println!("NonDigit");
       return Err(ParseError::NonDigit);
     }
@@ -210,15 +209,15 @@ fn modify_operation(input_string: &str) -> ModifyParseResult  {
 
 
 fn convert_vector_of_u32_to_single_u32(input_vector: &mut [u32]) -> u32  {
-    let mut return_value: u32 = 0;
+    let mut final_number: u32 = 0;
     let mut i = 1;
   
     let l: u32 =  input_vector.len() as u32;
   
     for input in input_vector  {
-      return_value += *input * 10u32.pow(l - i);
+      final_number += *input * 10u32.pow(l - i);
       i += 1;
     }
-    return return_value;
+    final_number
   }
   

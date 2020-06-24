@@ -49,7 +49,7 @@ fn roll(ctx: &mut Context, msg: &Message) -> CommandResult {
             }
         }
     
-        if a_flag == true {
+        if a_flag {
             print_string = roller::avg_roller(num_roll, dice_type, add_on);
         }  else if num_roll > MAX_PRINT_LINE_NUM   {
             print_string =  format!("{}{}", MAX_PRINT_LINE_MSG.to_string(), roller::avg_roller(num_roll, dice_type, add_on));

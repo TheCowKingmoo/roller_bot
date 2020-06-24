@@ -41,7 +41,7 @@ pub fn print_all_rolls(number_of_rolls: u32, dice_type: u32, add_on: i32) -> Str
         }
     }
         
-    return result_string;
+    result_string
 
 }  //end print_all_rolls
 
@@ -74,6 +74,6 @@ pub fn avg_roller(number_of_rolls: u32, dice_type: u32, add_on: i32) -> String  
     result_string.push_str(&((total / i as i32).to_string()));
     result_string.push_str(NEWLINE);
 
-    return result_string;
+    result_string
     
 }
