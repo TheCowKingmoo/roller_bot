@@ -28,6 +28,7 @@ Current commands implemented
     ~roll 20D7 +2  -> will roll twenty D7's each with its roll result and a total added with 2.
     ~roll 1D20 -7 +2 -> will roll one D20 and add the result with -5.
     ~roll 100D100 -a -> will show a line with the total added result of all rolls and another line showing the average.
+    ~roll 1D20 +7 2D8 -2 -> rolls two seperate dice where all modifiers will be added to the dice to the left of it.
   
   
   
