@@ -22,6 +22,7 @@ Current commands implemented
   ~help - not useful yet. 
 
   example ~roll commands:
+  
     ~roll 1D20  -> will roll one D20.
     ~roll 1D20 -7  -> will roll one D20 and also display rol lresult with a -7.
     ~roll 20D7 +2  -> will roll twenty D7's each with its roll result and a total added with 2.
