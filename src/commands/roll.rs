@@ -29,28 +29,37 @@ fn roll(ctx: &mut Context, msg: &Message) -> CommandResult {
         print_string = format!("{:?}", r.err().unwrap());
     } else {
         let tuple_return = r.ok().unwrap();
-        let num_roll = tuple_return.0;
-        let dice_type = tuple_return.1;
-        let add_on = tuple_return.2;
-        let args = tuple_return.3;
+        let dice_vector = tuple_return.0;
+        let arg_vector = tuple_return.1;
 
-        println!("{}", num_roll);
-
-        for character in args {
+        for character in arg_vector {
             if character == 'a' {
                 a_flag = true;
             }
         }
-        if a_flag {
-            print_string = roller::avg_roller(num_roll, dice_type, add_on);
-        } else if num_roll > MAX_PRINT_LINE_NUM {
-            print_string = format!(
-                "{}{}",
-                MAX_PRINT_LINE_MSG.to_string(),
-                roller::avg_roller(num_roll, dice_type, add_on)
-            );
-        } else {
-            print_string = roller::print_all_rolls(num_roll, dice_type, add_on);
+
+        println!("{}", dice_vector.len());
+
+        for dice in dice_vector {
+            if a_flag {
+                print_string.push_str(&roller::avg_roller(
+                    dice.number_rolls,
+                    dice.dice_type,
+                    dice.modifier,
+                ));
+            } else if dice.number_rolls > MAX_PRINT_LINE_NUM {
+                print_string.push_str(&format!(
+                    "{}{}",
+                    MAX_PRINT_LINE_MSG.to_string(),
+                    roller::avg_roller(dice.number_rolls, dice.dice_type, dice.modifier)
+                ));
+            } else {
+                print_string.push_str(&roller::print_all_rolls(
+                    dice.number_rolls,
+                    dice.dice_type,
+                    dice.modifier,
+                ));
+            }
         }
     }
 
