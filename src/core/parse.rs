@@ -7,6 +7,8 @@ const DICE_CHAR_UPPER: char = 'D';
 const ASCII_DECIMAL_SHIFT: u32 = 48;
 const ASCII_ALPHA_SHIFT_IDX: u32 = 97;
 
+use crate::core::*;
+
 #[derive(Debug)]
 pub enum ParseError {
   NoDecimalBeforeD,
@@ -22,6 +24,7 @@ pub enum ParseError {
   NoDFound,
   NoDecimalAfterD,
   CatchAll,
+  AddOrSubBeforeDice,
 }
 pub type DiceParseResult = Result<(u32, u32), ParseError>;
 
@@ -29,10 +32,11 @@ pub type ModifyParseResult = Result<i32, ParseError>;
 
 pub type ArgParseResult = Result<Vec<char>, ParseError>;
 
-pub type ParseResult = Result<(u32, u32, i32, Vec<char>), ParseError>;
+pub type ParseResult = Result<(Vec<dice::Dice>, Vec<char>), ParseError>;
 
 pub fn parse_roll_message(message_string: String) -> ParseResult {
   let mut arg_char_vector: Vec<char> = vec!['.'; 26]; // Char Vector that will hold arg flags
+  let mut dice_vector: Vec<dice::Dice> = Vec::new();
 
   //Check if the given string is too small to actually be a command
   if message_string.len() < 9 {
@@ -41,9 +45,11 @@ pub fn parse_roll_message(message_string: String) -> ParseResult {
     return Err(ParseError::InputTooSmall);
   }
 
-  let mut number_of_dice: u32 = 0; // will have the input string characters representing number of dice
-  let mut dice_type: u32 = 0; // will have the input string characters representing dice type
-  let mut extra: i32 = 0;
+  let mut current_dice: dice::Dice = dice::Dice {
+    number_rolls: 0,
+    dice_type: 0,
+    modifier: 0,
+  };
 
   //Flags used to tell if we have already parsed parts already
   let mut dice_flag = false;
@@ -77,18 +83,25 @@ pub fn parse_roll_message(message_string: String) -> ParseResult {
     }
 
     if current_char.is_ascii_digit() {
-      if !dice_flag {
-        dice_flag = true;
-        let r_tuple = parse_dice(chunk_string)?;
-        number_of_dice = r_tuple.0;
-        dice_type = r_tuple.1;
-      } else {
-        println!("AlreadyRolledDice");
-        return Err(ParseError::AlreadyRolledDice);
+      let r_tuple = parse_dice(chunk_string)?;
+
+      if dice_flag {
+        dice_vector.push(current_dice);
+        current_dice = dice::Dice {
+          number_rolls: 0,
+          dice_type: 0,
+          modifier: 0,
+        };
       }
+      dice_flag = true;
+      current_dice.number_rolls = r_tuple.0;
+      current_dice.dice_type = r_tuple.1;
     } else if current_char == ARG_CHAR {
       if next_char.is_ascii_digit() {
-        extra += modify_operation(chunk_string)?;
+        if !dice_flag {
+          return Err(ParseError::AddOrSubBeforeDice);
+        }
+        current_dice.modifier += modify_operation(chunk_string)?;
       } else {
         let temp_vec = break_up_arg(chunk_string)?;
         for character in temp_vec {
@@ -97,14 +110,18 @@ pub fn parse_roll_message(message_string: String) -> ParseResult {
         }
       }
     } else if current_char == ADD_CHAR {
-      extra += modify_operation(chunk_string)?;
+      if !dice_flag {
+        return Err(ParseError::AddOrSubBeforeDice);
+      }
+      current_dice.modifier += modify_operation(chunk_string)?;
     } else {
       println!("CatchAll");
       return Err(ParseError::CatchAll);
     }
   }
-  println!("{}, {}, {}", number_of_dice, dice_type, extra);
-  Ok((number_of_dice, dice_type, extra, arg_char_vector))
+
+  dice_vector.push(current_dice);
+  Ok((dice_vector, arg_char_vector))
 }
 
 // will parse a string in a format like 1D20, 100D100, num...numDnum...num
@@ -340,17 +357,30 @@ fn test_parse_roll_message_too_small() {
 #[test]
 fn test_parse_roll_message_simple() {
   let input = "~roll 1D20".to_owned();
-  let expected: (u32, u32, i32, Vec<char>) = (1, 20, 0, vec!['.'; 26]);
+  let c_dice = dice::Dice {
+    number_rolls: 1,
+    dice_type: 20,
+    modifier: 0,
+  };
   let return_value = parse_roll_message(input);
-  assert_eq!(expected, return_value.ok().unwrap());
+  let r_d = return_value.ok().unwrap().0[0];
+  assert_eq!(c_dice.number_rolls, r_d.number_rolls);
+  assert_eq!(c_dice.dice_type, r_d.dice_type);
 }
 
 #[test]
 fn test_parse_roll_message_modify() {
   let input = "~roll 1D20 +7 -100".to_owned();
-  let expected: (u32, u32, i32, Vec<char>) = (1, 20, -93, vec!['.'; 26]);
+  let c_dice = dice::Dice {
+    number_rolls: 1,
+    dice_type: 20,
+    modifier: -93,
+  };
   let return_value = parse_roll_message(input);
-  assert_eq!(expected, return_value.ok().unwrap());
+  let r_d = return_value.ok().unwrap().0[0];
+  assert_eq!(c_dice.number_rolls, r_d.number_rolls);
+  assert_eq!(c_dice.dice_type, r_d.dice_type);
+  assert_eq!(c_dice.modifier, r_d.modifier);
 }
 
 #[test]
@@ -358,7 +388,6 @@ fn test_parse_roll_message_arg() {
   let input = "~roll 1D20 -a".to_owned();
   let mut vec = vec!['.'; 26];
   vec[0] = 'a';
-  let expected: (u32, u32, i32, Vec<char>) = (1, 20, 0, vec);
   let return_value = parse_roll_message(input);
-  assert_eq!(expected, return_value.ok().unwrap());
+  assert_eq!(vec[0], return_value.ok().unwrap().1[0]);
 }
